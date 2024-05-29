@@ -16,6 +16,7 @@ vim.o.clipboard = "unnamedplus"
 vim.opt.mouse = ""
 vim.opt.list = true
 vim.opt.lcs = "tab:> ,lead:.,trail:."
+vim.opt.completeopt = {"menu", "menuone", "noselect", "preview"}
 vim.opt.nu = true
 vim.opt.relativenumber = true
 vim.opt.tabstop = 4
@@ -58,10 +59,11 @@ require("lazy").setup({
 	"rcarriga/nvim-dap-ui",
 	"nvim-neotest/nvim-nio",
 	"nvim-telescope/telescope-dap.nvim",
+	"christoomey/vim-tmux-navigator",
 	"ThePrimeagen/harpoon",
 	"tpope/vim-fugitive",
 	"lewis6991/gitsigns.nvim",
-	"stevearc/aerial.nvim",
+	"stevearc/oil.nvim",
 	"RaafatTurki/hex.nvim",
 	"nvim-tree/nvim-web-devicons",
 	"bluz71/vim-moonfly-colors",
@@ -70,36 +72,15 @@ require("lazy").setup({
 require("trouble").setup()
 require("nvim-treesitter.configs").setup({
 	ensure_installed = {"c", "lua", "vim", "vimdoc", "query"},
-	sync_install = false,
+	sync_install = true,
 	auto_install = true,
-	ignore_install = { "javascript" },
 	highlight = {
 		enable = true,
-		disable = function(lang, buf)
-			local max_filesize = 100 * 1024 -- 100 KB
-			local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
-			if ok and stats and stats.size > max_filesize then
-				return true
-			end
-		end,
 		additional_vim_regex_highlighting = false,
 	},
 })
-require("telescope").setup({
-	defaults = {
-		layout_config = {
-			bottom_pane = {
-				height = 100,
-				preview_cutoff = 100,
-				prompt_position = "bottom"
-			},
-		},
-		layout_strategy = "bottom_pane",
-		border = true
-	}
-})
+require("telescope").setup()
 require("telescope").load_extension("dap")
-require("telescope").load_extension("aerial")
 require("telescope").load_extension("telescope-tabs")
 require("telescope").load_extension("harpoon")
 require("telescope-tabs").setup()
@@ -136,10 +117,6 @@ local cmp = require("cmp")
 local cmp_select = {behavior = cmp.SelectBehavior.Select}
 cmp.setup({
 	sources = {
-		--{name = "path"},
-		--{name = "buffer"},
-		--{name = "nvim_lua"},
-		--{name = "luasnip"},
 		{name = "nvim_lsp"},
 	},
 	formatting = lsp_zero.cmp_format(),
@@ -154,6 +131,16 @@ cmp.setup({
 		["<C-;>"] = cmp.mapping.confirm({ select = true }),
 		["<C-Enter>"] = cmp.mapping.complete(),
 	}),
+	snippet = {
+		expand = function(args)
+			require("luasnip").lsp_expand(args.body)
+		end
+	}
+})
+local luasnip = require("luasnip")
+luasnip.config.set_config({
+	history = false,
+	updateevents = "TextChanged,TextChangedI"
 })
 local dap = require("dap")
 --[[
@@ -270,19 +257,7 @@ require("gitsigns").setup({
 		untracked    = { text = '/' },
 	},
 })
-local aerial_size = 35
-require("aerial").setup({
-	backends = {"treesitter", "lsp", "markdown", "man"},
-	layout = {
-		max_width = aerial_size,
-		width = aerial_size,
-		min_width = aerial_size,
-		default_direction = "left",
-		placement = "window",
-		resize_to_content = false,
-		preserve_equality = false,
-	},
-})
+require("oil").setup()
 require("hex").setup()
 require("nvim-web-devicons").setup()
 vim.keymap.set("n", "`", "<nop>")
@@ -304,18 +279,20 @@ vim.keymap.set("n", "<leader>6", function() require("harpoon.ui").nav_file(6) en
 vim.keymap.set("n", "<leader>7", function() require("harpoon.ui").nav_file(7) end)
 vim.keymap.set("n", "<leader>8", function() require("harpoon.ui").nav_file(8) end)
 vim.keymap.set("n", "<leader>9", function() require("harpoon.ui").nav_file(9) end)
-vim.keymap.set("n", "<leader>;;", function() vim.cmd[[wa]] vim.cmd[[make]] end)
-vim.keymap.set("n", "<leader>;o", function() vim.cmd[[copen]] end)
-vim.keymap.set("n", "<leader>;x", function() vim.cmd[[cclose]] end)
+vim.keymap.set("n", "<leader>ll", function() vim.cmd[[wa]] vim.cmd[[make]] end)
 vim.keymap.set("n", "<leader>qq", function() require("telescope.builtin").diagnostics() end)
-vim.keymap.set("n", "<leader>qw", function() require("trouble").toggle() end)
+vim.keymap.set("n", "<leader>qw", function() require("trouble").toggle("quickfix") end)
+vim.keymap.set("n", "<leader>qo", function() vim.cmd[[copen]] end)
+vim.keymap.set("n", "<leader>qx", function() vim.cmd[[cclose]] end)
+vim.keymap.set("n", "<leader>qh", function() require("telescope.builtin").quickfixhistory() end)
 vim.keymap.set("n", "<leader>ss", function() require("telescope.builtin").current_buffer_fuzzy_find() end)
-vim.keymap.set("n", "<leader>s_", function() require("telescope.builtin").live_grep() end)
+vim.keymap.set("n", "<leader>sf", function() require("telescope.builtin").live_grep() end)
 vim.keymap.set("n", "<leader>sl", function() require("telescope.builtin").grep_string({search = vim.fn.input(": ")}) end)
 vim.keymap.set("n", "<leader>ff", function() require("telescope.builtin").lsp_document_symbols() end)
+vim.keymap.set("n", "<leader>fq", function() require("telescope.builtin").quickfix() end)
 vim.keymap.set("n", "<leader>fk", function() require("telescope.builtin").lsp_workspace_symbols() end)
-vim.keymap.set("n", "<leader>fa", function() require("telescope").extensions.aerial.aerial() end)
 vim.keymap.set("n", "<leader>fo", function() require("telescope.builtin").find_files() end)
+vim.keymap.set("n", "<leader>oo", function() vim.cmd[[Oil]] end)
 vim.keymap.set("n", "<leader>fh", function() require("telescope.builtin").help_tags() end)
 vim.keymap.set("n", "<leader>fc", function() require("telescope.builtin").commands() end)
 vim.keymap.set("n", "<leader>fj", function() require("telescope.builtin").jumplist() end)
@@ -345,12 +322,18 @@ vim.keymap.set("n", "<A-b>", function() require("dap").toggle_breakpoint() end)
 vim.keymap.set("n", "<A-n>", function() require("dap").step_over() end)
 vim.keymap.set("n", "<A-j>", function() require("dap").step_into() end)
 vim.keymap.set("n", "<A-p>", function() require("dap").step_out() end)
-vim.keymap.set("n", "<C-h>", "<C-w>h")
-vim.keymap.set("n", "<C-j>", "<C-w>j")
-vim.keymap.set("n", "<C-k>", "<C-w>k")
-vim.keymap.set("n", "<C-l>", "<C-w>l")
-vim.keymap.set("n", "<C-n>", function() vim.cmd[[AerialNext]] end)
-vim.keymap.set("n", "<C-p>", function() vim.cmd[[AerialPrev]] end)
+vim.keymap.set("n", "<C-w>1", "<C-w><C-o>")
+vim.keymap.set("n", "<C-w>2", "<C-w>v")
+vim.keymap.set("n", "<C-w>3", "<C-w>n")
+vim.keymap.set("n", "<C-h>", "<cmd>TmuxNavigateLeft<CR>")
+vim.keymap.set("n", "<C-j>", "<cmd>TmuxNavigateDown<CR>")
+vim.keymap.set("n", "<C-k>", "<cmd>TmuxNavigateUp<CR>")
+vim.keymap.set("n", "<C-l>", "<cmd>TmuxNavigateRight<CR>")
+vim.keymap.set("n", "<C-\\>", "<cmd>TmuxNavigatePrevious<CR>")
+vim.keymap.set("n", "<C-n>", "<cmd>cnext<CR>zz")
+vim.keymap.set("n", "<C-p>", "<cmd>cprev<CR>zz")
+vim.keymap.set("n", "<leader>k", "<cmd>lnext<CR>zz")
+vim.keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
 vim.keymap.set("n", "<C-Up>", function() vim.cmd[[resize -1]] end)
 vim.keymap.set("n", "<C-Down>", function() vim.cmd[[resize +1]] end)
 vim.keymap.set("n", "<C-Right>", function() vim.cmd[[vertical resize -1]] end)
